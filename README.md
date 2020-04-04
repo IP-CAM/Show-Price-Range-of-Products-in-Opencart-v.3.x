@@ -1,4 +1,4 @@
-# Price Range+
+# Price Range
 
 ## Description
 The «Price Range» extension is for Opencart 3.x CMS. The extension allows to display price ranges of products based on manually enetered values.
