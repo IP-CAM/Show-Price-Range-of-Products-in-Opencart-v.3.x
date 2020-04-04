@@ -18,7 +18,7 @@ class ControllerExtensionModulePriceRange extends Controller {
 
 				if (isset($data['products']) && is_array($data['products'])) {
 					foreach ($data['products'] as &$product) {
-						$price_range = $this->model_extension_module_price_range->getPriceRange($product['product_id']);
+						$price_range = $this->model_extension_module_price_range->getPriceRanges($product['product_id']);
 
 						if (isset($price_range)) {
 							if (isset($price_range['price']) && isset($product['price'])) {
@@ -29,8 +29,8 @@ class ControllerExtensionModulePriceRange extends Controller {
 								$product['special'] = $price_range['special'];
 							}
 
-							if (isset($price_range['tax']) && !empty($product['tax'])) {
-								$product['tax'] = $price_range['tax'];
+							if (isset($price_range['extax']) && !empty($product['tax'])) {
+								$product['tax'] = $price_range['extax'];
 							}
 						}
 					}
@@ -39,7 +39,7 @@ class ControllerExtensionModulePriceRange extends Controller {
 				}
 
 				if (isset($data['product_id']) && $this->config->get('module_price_range')['view'] == 'full') {
-					$price_range = $this->model_extension_module_price_range->getPriceRange($data['product_id']);
+					$price_range = $this->model_extension_module_price_range->getPriceRanges($data['product_id']);
 
 					if (isset($price_range)) {
 						if (isset($price_range['price'])) {
@@ -54,8 +54,8 @@ class ControllerExtensionModulePriceRange extends Controller {
 							$data['discounts'] = $price_range['discounts'];
 						}
 
-						if (isset($price_range['tax'])) {
-							$data['tax'] = $price_range['tax'];
+						if (isset($price_range['extax'])) {
+							$data['tax'] = $price_range['extax'];
 						}
 					}
 				}
