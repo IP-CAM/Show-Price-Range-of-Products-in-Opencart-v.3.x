@@ -18,24 +18,23 @@ class ModelExtensionModulePriceRange extends Model {
 
 			$product_info = $this->model_catalog_product->getProduct($product_id);
 
-			$price = (float)$product_info['price'];
-
 			$config_tax = $this->config->get('config_tax');
 
 			if ($config_tax) {
 				$price_range = array(
-					'min' => $this->tax->calculate($manual_range['min'], $product_info['tax_class_id'], $config_tax),
-					'max' => $this->tax->calculate($manual_range['max'], $product_info['tax_class_id'], $config_tax),
+					'min' => $manual_range['min'] ? $this->tax->calculate($manual_range['min'], $product_info['tax_class_id'], $config_tax) : 0,
+					'max' => $manual_range['max'] ? $this->tax->calculate($manual_range['max'], $product_info['tax_class_id'], $config_tax) : 0,
 				);
 
 				$price_range = $this->format($price_range);
+				$extax_range = $this->format($manual_range);
 
 				if ((float)$product_info['special']) {
 					$co = (float)$product_info['special'] / (float)$product_info['price'];
 
 					$special_range = array(
-						'min' => $this->tax->calculate($manual_range['min'] * $co, $product_info['tax_class_id'], $config_tax),
-						'max' => $this->tax->calculate($manual_range['max'] * $co, $product_info['tax_class_id'], $config_tax),
+						'min' => $manual_range['min'] ? $this->tax->calculate($manual_range['min'] * $co, $product_info['tax_class_id'], $config_tax) : 0,
+						'max' => $manual_range['max'] ? $this->tax->calculate($manual_range['max'] * $co, $product_info['tax_class_id'], $config_tax) : 0,
 					);
 
 					$special_range = $this->format($special_range);
@@ -44,6 +43,8 @@ class ModelExtensionModulePriceRange extends Model {
 						'min' => $manual_range['min'] * $co,
 						'max' => $manual_range['max'] * $co,
 					);
+
+					$extax_range = $this->format($extax_range);
 				} elseif ($this->model_catalog_product->getProductDiscounts($product_id)) {
 					$discounts = array();
 
@@ -51,18 +52,20 @@ class ModelExtensionModulePriceRange extends Model {
 						$co = (float)$discount['price'] + ($manual_range['max'] - $manual_range['min']);
 
 						$discount_extax_range = array(
-							'min' => (float)$discount['price'] + ($manual_range['min'] - (float)$product_info['price']),
-							'max' => (float)$discount['price'] + ($manual_range['max'] - (float)$product_info['price']),
+							'min' => $manual_range['min'] ? (float)$discount['price'] + ($manual_range['min'] / $quantity - (float)$product_info['price']) : 0,
+							'max' => $manual_range['max'] ? (float)$discount['price'] + ($manual_range['max'] / $quantity - (float)$product_info['price']) : 0,
 						);
 
-						$discount_extax_range = $this->format($discount_extax_range);
+						$discount_extax_range['min'] *= $quantity;
+						$discount_extax_range['max'] *= $quantity;
 
 						$discount_range = array(
-							'min' => $this->tax->calculate((float)$discount['price'] + ($manual_range['min'] - (float)$product_info['price']), $product_info['tax_class_id'], $config_tax),
-							'max' => $this->tax->calculate((float)$discount['price'] + ($manual_range['max'] - (float)$product_info['price']), $product_info['tax_class_id'], $config_tax),
+							'min' => $manual_range['min'] ? $this->tax->calculate($discount_extax_range['min'], $product_info['tax_class_id'], $config_tax) : 0,
+							'max' => $manual_range['max'] ? $this->tax->calculate($discount_extax_range['max'], $product_info['tax_class_id'], $config_tax) : 0,
 						);
 
 						$discount_range = $this->format($discount_range);
+						$discount_extax_range = $this->format($discount_extax_range);
 
 						$discounts[] = array(
 							'quantity' => $discount['quantity'],
@@ -70,14 +73,12 @@ class ModelExtensionModulePriceRange extends Model {
 							'extax'    => $discount_extax_range,
 						);
 
-						if ($discount['quantity'] >= $quantity) {
+						if ($quantity >= $discount['quantity']) {
 							$price_range = $discount_range;
 							$extax_range = $discount_extax_range;
 						}
 					}
 				}
-
-				$extax_range = $this->format($manual_range);
 			} else {
 				$price_range = $this->format($manual_range);
 
@@ -95,9 +96,12 @@ class ModelExtensionModulePriceRange extends Model {
 
 					foreach ($this->model_catalog_product->getProductDiscounts($product_id) as $discount) {
 						$discount_range = array(
-							'min' => (float)$discount['price'] + ($manual_range['min'] - (float)$product_info['price']),
-							'max' => (float)$discount['price'] + ($manual_range['max'] - (float)$product_info['price']),
+							'min' => $manual_range['min'] ? (float)$discount['price'] + ($manual_range['min'] / $quantity - (float)$product_info['price']) : 0,
+							'max' => $manual_range['max'] ? (float)$discount['price'] + ($manual_range['max'] / $quantity - (float)$product_info['price']) : 0,
 						);
+
+						$discount_extax_range['min'] *= $quantity;
+						$discount_extax_range['max'] *= $quantity;
 
 						$discount_range = $this->format($discount_range);
 
@@ -106,7 +110,7 @@ class ModelExtensionModulePriceRange extends Model {
 							'price'    => $discount_range,
 						);
 
-						if ($discount['quantity'] >= $quantity) {
+						if ($quantity >= $discount['quantity']) {
 							$price_range = $discount_range;
 						}
 					}
@@ -126,12 +130,16 @@ class ModelExtensionModulePriceRange extends Model {
 	private function format($range) {
 		$currency = $this->session->data['currency'];
 
-		if ($range['min'] === $range['max']) {
-			return $this->currency->format($range['min'], $currency);
-		}
-
 		$style = $this->config->get('module_price_range')['style'];
 		$text = $this->config->get('module_price_range')['text'][$this->config->get('config_language_id')];
+
+		if ($range['min'] && !$range['max']) {
+			$style = 'from';
+		} elseif (!$range['min'] && $range['max']) {
+			$style = 'upto';
+		} elseif ($range['min'] === $range['max']) {
+			return $this->currency->format($range['min'], $currency);
+		}
 
 		if ($style === 'from') {
 			$range['min'] = $this->currency->format($range['min'], $currency);
@@ -157,7 +165,7 @@ class ModelExtensionModulePriceRange extends Model {
 		$min = (float)$query->row['min_price'];
 		$max = (float)$query->row['max_price'];
 
-		if ($min >= $max) {
+		if ($min >= $max && $max != 0) {
 			return null;
 		}
 

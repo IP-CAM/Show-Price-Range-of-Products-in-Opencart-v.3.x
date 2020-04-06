@@ -17,8 +17,8 @@ class ModelExtensionModulePriceRange extends Model {
 			// $query = $this->db->query('SELECT * FROM ' . DB_PREFIX . 'product WHERE product_id = "' . (int)$product_id . '"');
 			$query = $this->db->query('SELECT min_price, max_price FROM ' . DB_PREFIX . "product WHERE product_id = '" . (int)$product_id . "'");
 
-			$price_range['min_price'] = (float)$query->row['min_price'];
-			$price_range['max_price'] = (float)$query->row['max_price'];
+			$price_range['min_price'] = (float)abs($query->row['min_price']);
+			$price_range['max_price'] = (float)abs($query->row['max_price']);
 		}
 
 		return $price_range;
@@ -30,7 +30,7 @@ class ModelExtensionModulePriceRange extends Model {
 		$product_id = ($result->row['Auto_increment'] - 1);
 
 		if ($product_id) {
-			$this->db->query('UPDATE ' . DB_PREFIX . 'product SET min_price = "' . (float)$min_price . '", max_price = "' . (float)$max_price . '" WHERE product_id = "' . (int)$product_id . '"');
+			$this->db->query('UPDATE ' . DB_PREFIX . 'product SET min_price = "' . (float)abs($min_price) . '", max_price = "' . (float)abs($max_price) . '" WHERE product_id = "' . (int)$product_id . '"');
 		}
 	}
 
