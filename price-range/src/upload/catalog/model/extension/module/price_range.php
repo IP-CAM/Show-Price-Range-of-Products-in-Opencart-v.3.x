@@ -100,9 +100,6 @@ class ModelExtensionModulePriceRange extends Model {
 							'max' => $manual_range['max'] ? (float)$discount['price'] + ($manual_range['max'] / $quantity - (float)$product_info['price']) : 0,
 						);
 
-						$discount_extax_range['min'] *= $quantity;
-						$discount_extax_range['max'] *= $quantity;
-
 						$discount_range = $this->format($discount_range);
 
 						$discounts[] = array(
@@ -165,7 +162,7 @@ class ModelExtensionModulePriceRange extends Model {
 		$min = (float)$query->row['min_price'];
 		$max = (float)$query->row['max_price'];
 
-		if ($min >= $max && $max != 0) {
+		if ($min == $max || ($min >= $max && $max != 0)) {
 			return null;
 		}
 
